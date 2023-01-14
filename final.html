@@ -1,0 +1,520 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>20T2117B-14</title>
+    <!--bulma.min.css is module of css-->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <!--chart.js is module oc script-->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <section class="section">
+        <!--title-->
+        <h1 class="title"align="center">加速度センサの制御</h1>
+        <div class="box"><!--design of reset-->
+            <div class="field"><!--label of reset-->
+                <label class="label">1.デバイスのリセット</label>
+            </div><!--button of reset-->
+            <button class="button is-light" type="button" id="Reset" onclick="resetData()">リセット</button>
+        </div>
+        <div class="box"><!--design of axis-->
+            <div class="field"><!--label of axis-->
+                <label class="label">2.軸の有効・無効の切り替え</label>
+            </div><!--button of axis-->
+            <button class="button is-light" type="button" id="xen" onclick="changeXen()">x軸は有効</button>
+            <button class="button is-light" type="button" id="yen" onclick="changeYen()">y軸は有効</button>
+            <button class="button is-light" type="button" id="zen" onclick="changeZen()">z軸は有効</button>
+        </div>
+        <div class="box">
+            <div class="field"><!--design of scale-->
+                <!--label of scale-->
+                <label class="label">3.測定範囲の切り替え</label>
+            </div>
+            <form id="scale" onclick="changeScale()">
+                <!--radio_box of full scale-->
+                <div class="control">
+                    <label class="radio">
+                        <input type="radio" name="g" value="2g" checked>
+                        +/-2[g]
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="g" value="4g">
+                        +/-4[g]
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="g" value="8g">
+                        +/-8[g]
+                    </label>
+                </div>
+            </form>
+        </div>
+        <div class="box">
+            <div class="field"><!--design of scale-->
+                <!--label of scale-->
+                <label class="label">4.データの更新速度の切り替え</label>
+            </div>
+            <form id="freq" onclick="changeFrequency()">
+                <!--radio_box of frequency-->
+                <div class="control">
+                    <label class="radio">
+                        <input type="radio" name="hz" value="1" checked>
+                        1[Hz]<!--1[seconds]-->
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="hz" value="10">
+                        10[Hz]<!--0.1[seconds]-->
+                    </label>
+                    <label class="radio">
+                        <input type="radio" name="hz" value="25">
+                        25[Hz]<!--0.04[sconds]-->
+                    </label>
+                </div>
+            </form>
+        </div>
+        <div class="box hero is-halfheight">
+            <div class="hero-head">
+                <div class="field">
+                    <!--display value&graph-->
+                    <label class="label">5.データとグラフの表示</label>
+                </div>
+                <div class="columns">
+                    <div class="column">
+                        <!--xValue from cgi-->
+                        <div class="content">
+                            <p id="xPlace">X=</p>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <!--yValue from cgi-->
+                        <div class="content">
+                            <p id="yPlace">Y=</p>
+                        </div>
+                    </div>
+                    <div class="column">
+                        <!--zValue from cgi-->
+                        <div class="content">
+                            <p id="zPlace">Z=</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-body">
+                <div class="columns">
+                    <div class="column is-full">
+                        <!--graph of xValue&yValue&zValue-->
+                        <canvas id="graph"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="box"><!--design of reset-->
+            <div class="field"><!--label of reset-->
+                <label class="label" id="circle">円運動は検知されていません！</label>
+            </div>
+        </div>
+    </section>
+    <script>
+        var reset = "0";//Default element of reset to send to cgi
+        var xen = "1";//Default element of xValue to send to cgi
+        var yen = "1";//Default element of yValue to send to cgi
+        var zen = "1";//Default element of zValue to send to cgi
+        var hz_value = "1";//Default element of frequency to send to cgi
+        var int_hz = 1;//time to repeat cgi [s]
+        var label_time = 0;//display time[s]
+        var time = 1000;//time to repeat cgi [ms]
+        var scale_range = "2g";//Default element of scale to send to cgi
+        var minScale = -2;//display graph of default_min_yaxis
+        var maxScale = 2;//display graph of default_max_yaxis 
+        var step = 0.5;//display graph of default_step
+        var graphID = document.getElementById("graph");//get graph_id
+        var xVal = [];//display graph of some xValues
+        var yVal = [];//display graph of some yValues
+        var zVal = [];//display graph of some zValues
+        var timeVal = [];//display graph of some times
+        //create graph
+        var myChart = new Chart(graphID, {
+            type: 'line',
+            data: {
+                labels: timeVal,//timeVal is xaxis_data
+                datasets: [{//display xaxis data
+                    label: 'Xaxis Data',
+                    fill: false,
+                    lineTension: 0,
+                    borderWidth: 1,
+                    borderColor: 'red',
+                    backgroundColor: 'red',
+                    data: xVal,//xVal is one of xaxis_data
+                }, {//display yaxis data
+                    label: 'Yaxis Data',
+                    fill: false,
+                    lineTension: 0,
+                    borderWidth: 1,
+                    borderColor: 'blue',
+                    backgroundColor: 'blue',
+                    data: yVal,//yVal is one of yaxis_data
+                }, {//display zaxis data
+                    label: 'Zaxis Data',
+                    fill: false,
+                    lineTension: 0,
+                    borderWidth: 1,
+                    borderColor: 'yellow',
+                    backgroundColor: 'yellow',
+                    data: zVal,//zVal is one of zaxis_data
+                }]
+            },
+            options: {
+                responsive: true,
+                animation: {
+                    duration: 0,
+                },
+                plugins: {
+                    title: {//text of graph 
+                        display: true,
+                        text: 'Acceleration Data',
+                        color:'black',
+                        font: {
+                            size: 16,
+                        }
+                    }
+                },
+                tooltips: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    x: {//label of xaxis
+                        title: {
+                            display: true,
+                            //fontSize: 14,
+                            //fontColor: 'blue',
+                            text: 'Time(s)',
+                            color:'black',
+                            font: {
+                                size: 14,
+                            }
+                        },
+                    },
+                    y: {//label of yaxis
+                        min: minScale,//min_scale of yaxis
+                        max: maxScale,//max_scale of yaxis
+                        title: {
+                            display: true,
+                            text: 'Gravity(g)',
+                            color:'black',
+                            font: {
+                                size: 14,
+                            }
+                        },
+                        ticks: {
+                            //step of yaxis
+                            stepSize: step,
+                        }
+                    }
+                }
+            }
+        });
+        //display size of graph 
+        myChart.canvas.parentNode.style.height = '400px';
+        myChart.canvas.parentNode.style.width = '1000px';
+
+        //async function is 非同期関数
+        async function graphViewer() {
+            //約束を取り付けたい処理にPromise
+            //Promise(resolve)でcgiの処理を実行する
+            return new Promise(resolve => {
+                //sleep(time)time is 1000 or 100 or 25
+                sleep(time).then(() => {
+                    //get information of lis3dh from 20T2117B-13.cgi
+                    loadDoc("/cgi-bin/20T2117B-13.cgi?Reset=" + encodeURI(reset) +
+                        "&xvalue=" + encodeURI(xen) + "&yvalue=" + encodeURI(yen) + "&zvalue=" + encodeURI(zen) +
+                        "&frequency=" + encodeURI(hz_value) + "&scale=" + encodeURI(scale_range), load);
+                    addData();//add data to list
+                    isCircle();//detect motion of circle
+                    graphViewer();//recursive graphViewer function
+                })
+            });
+        }
+
+        function sleep(ms) {//set timer time
+            //get timer job
+            return new Promise(function (resolve) {
+                setTimeout(resolve, ms)//ms毎にresolve起きる
+            })
+        }
+
+        function loadDoc(url, callBack) {
+            //XMLHttpRequest()でAJAXの要求作成
+            var xhttp = new XMLHttpRequest();
+            //xhttp.onreadystatechangeで接続ができた時に以下が実行
+            xhttp.onreadystatechange = function () {
+                //(this.readyState = 4)→データの準備完了
+                //(this.status = 200)→成功
+                if (this.readyState == 4 && this.status == 200) {
+                    //callBack(this)で引数として渡された関数を実行
+                    //今回の場合は、load関数が実行
+                    callBack(this);
+                }
+            };
+            //CGIのGETメそっとでurlからのデータを要求
+            xhttp.open("GET", url, true);
+            //要求を送信
+            xhttp.send();
+        }
+        function load(xhttp) {
+            //responseXML:XML形式でデータ取得
+            xmlDoc = xhttp.responseXML;
+            //xmlDoc.getElementsByTagName("x")で取得したデータの中のそれぞれの値を抽出
+            var x = xmlDoc.getElementsByTagName("x");
+            var y = xmlDoc.getElementsByTagName("y");//yもxと同様
+            var z = xmlDoc.getElementsByTagName("z");//zも同様
+            //x[0].childNodes[0].nodeValueで値を抽出
+            var docContentx = "X=" + x[0].childNodes[0].nodeValue;
+            var docContenty = "Y=" + y[0].childNodes[0].nodeValue;//yもxと同様
+            var docContentz = "Z=" + z[0].childNodes[0].nodeValue;//zも同様
+            //xPlace,yPlace,zPlaceにXML形式で取得した値を表示
+            document.getElementById("xPlace").innerHTML = docContentx;
+            document.getElementById("yPlace").innerHTML = docContenty;
+            document.getElementById("zPlace").innerHTML = docContentz;
+            timeVal.push(label_time);//label_timeを格納
+            //xVal,yVal,zValにXML形式で取得したそれぞれの値を格納
+            xVal.push(x[0].childNodes[0].nodeValue);
+            yVal.push(y[0].childNodes[0].nodeValue);
+            zVal.push(z[0].childNodes[0].nodeValue);
+            // marumekomi
+            nextVal = Math.round((label_time + (Math.round((1000 / int_hz)) / 1000)) * 1000) / 1000;
+            label_time = nextVal;//label_timeをnextValに変更
+        }
+        //change myChart Data 
+        function addData() {
+            myChart.data.labels = timeVal;//data of xaxis
+            myChart.data.datasets[0].data = xVal;//data of yaxis from xVal
+            myChart.data.datasets[1].data = yVal;//data of yaxis from yVal
+            myChart.data.datasets[2].data = zVal;//data of yaxis from zVal
+            myChart.options.scales.y.min = minScale;//set max_scale of yaxis
+            myChart.options.scales.y.max = maxScale;//set min_scale of yaxis
+            myChart.options.scales.y.ticks.stepSize = step;//set step of yaxis
+            myChart.update();//update information of graph 
+        }
+        //process resetbutton 
+        function resetData() {
+            //get id of some button&radio_box
+            var xbutton = document.getElementById("xen");
+            var ybutton = document.getElementById("yen");
+            var zbutton = document.getElementById("zen");
+            var freq_name = document.getElementsByName("hz");
+            var scale_name = document.getElementsByName("g");
+            xen = "1";//change default xen&xbutton
+            xbutton.textContent = "x軸は有効";
+            yen = "1";//change default yen&ybutton
+            ybutton.textContent = "y軸は有効";
+            zen = "1";//change default yen&ybutton
+            zbutton.textContent = "z軸は有効";
+            hz_value = "1";//change default information of frequency
+            int_hz = 1;//time[s]
+            time = 1000;//time[ms]
+            freq_name[0].checked = true;//change radio_box of default_frequency
+            scale_range = "2g";//change default information of scale
+            //change information of default_yaix
+            minScale = -2;
+            maxScale = 2;
+            step = 0.5;
+            scale_name[0].checked = true;//change radio_box of default_scale
+            //change default_data of list
+            label_time = 0;
+            xVal.length= 0;
+            yVal.length = 0;
+            zVal.length = 0;
+            timeVal.length = 0;
+        }
+        //process xbutton
+        function changeXen() {
+            //get id of xbutton
+            const btn = document.getElementById("xen");
+            if (btn.textContent == "x軸は有効") {
+                //change text&element disabled Xen
+                btn.textContent = "x軸は無効";
+                xen = "0";
+            }
+            else if (btn.textContent == "x軸は無効") {
+                //change text&element abled Xen
+                btn.textContent = "x軸は有効";
+                xen = "1";
+            }
+        }
+        //process ybutton
+        function changeYen() {
+            //get id of xbutton
+            const btn = document.getElementById("yen");
+            if (btn.textContent == "y軸は有効") {
+                //change text&element disabled Yen
+                btn.textContent = "y軸は無効";
+                yen = "0";
+            }
+            else if (btn.textContent == "y軸は無効") {
+                //change text&element abled Yen
+                btn.textContent = "y軸は有効";
+                yen = "1";
+            }
+        }
+        //process zbutton
+        function changeZen() {
+            //get id of xbutton
+            const btn = document.getElementById("zen");
+            if (btn.textContent == "z軸は有効") {
+                //change text&element disabled Zen
+                btn.textContent = "z軸は無効";
+                zen = "0";
+            }
+            else if (btn.textContent == "z軸は無効") {
+                //change text&element abled Zen
+                btn.textContent = "z軸は有効";
+                zen = "1";
+            }
+        }
+        //process frequecybutton
+        function changeFrequency() {
+            //get id of freequency
+            const freq_element = document.getElementById("freq");
+            //get name="hz"
+            var freq_name = freq_element.hz;
+            //get value="hz"
+            var freq_value = freq_name.value;
+            //change [ms]&element = 1
+            if (freq_value == "1") {
+                hz_value = "1";
+                int_hz = 1;
+            }//change [ms]&element = 10
+            else if (freq_value == "10") {
+                hz_value = "10";
+                int_hz = 10;
+            }//change [ms]&element = 25
+            else if (freq_value == "25") {
+                hz_value = "25";
+                int_hz = 25;
+            }//set update speed[s]
+            time = 1000 / int_hz;
+        }
+        //process scalebutton
+        function changeScale() {
+            //get id of scale
+            const scale_element = document.getElementById("scale");
+            var scale_name = scale_element.g;//get name="g"
+            var scale_value = scale_name.value;//get value="g"
+            //change scale of yaxis & step of yaxis & element = 2g
+            if (scale_value == "2g") { 
+                scale_range = "2g";
+                minScale = -2;
+                maxScale = 2;
+                step = 0.5;
+            }//change scale of yaxis & step of yaxis & element = 2g
+            else if (scale_value == "4g") {
+                scale_range = "4g";
+                minScale = -4;
+                maxScale = 4;
+                step = 1;
+            }//change scale of yaxis & step of yaxis & element = 2g
+            else if (scale_value == "8g") {
+                scale_range = "8g";
+                minScale = -8;
+                maxScale = 8;
+                step = 2;
+            }
+        }//sqrt(x^2+y^2+z^2)
+        function getLength(xCount) {
+            var axisLength = 0;
+            axisLength = Math.pow(Math.pow(xVal[xCount], 2) + Math.pow(yVal[xCount], 2)
+            + Math.pow(zVal[xCount], 2), 0.5);
+            return axisLength;//get sqrt(x^2+y^2+z^2)
+        }//get averageLength
+        function getMeanOfLength() {
+            var mean = -1;
+            if (mean == -1) {
+                var totalLength = 0;
+                for (var count = 0;count < xVal.length; count ++) {
+                    //sum(sqrt(xVal[count]^2+yVal[count]^2+zVal[count]^2))
+                    totalLength += getLength(count);
+                }    
+                //abaout mean = 1, mean=average(totalLength)
+                mean = totalLength / xVal.length;        
+            }
+            return mean;//get mean_value
+        }// get dispersiion
+        function getVarianceOfLength() {
+            var variance = 0;
+            var mean = getMeanOfLength();//average totalLength 
+            //sum((axisLength - mean)^2)
+            for (let count = 0; count < xVal.length; count ++) {
+                variance += Math.pow(getLength(count) - mean, 2);
+            }//get average((axisLength - mean)^2)
+            return variance / xVal.length;            
+        }
+        //detect circular motion
+        function isCircle() {
+            //circle_id
+            const circle_id = document.getElementById("circle");
+            var result = true;//judge true
+            var varianceLength = getVarianceOfLength();
+            if (varianceLength > 4) {//result is false
+                result = !result;
+                console.log(result);
+            }
+            var Coordinate = [0, 0, 0, 0, 0, 0, 0, 0];//detect circle
+            var min = ((xVal.length / 8) * 0.8);//Check for scatter
+            var ok = 0;//Whether min is satisfied
+            for(let val = 0;val < xVal.length; val ++) {//plus count of Coordinate[0] 
+                if (xVal[val] > 0 && yVal[val] > 0 && xVal[val] > yVal[val]) {
+                    Coordinate[0]+=1;
+                }else if (xVal[val] > 0 && yVal[val] > 0 && xVal[val] < yVal[val]) {
+                    //plus count of Coordinate[1]
+                    Coordinate[1]+=1;
+                }else if (xVal[val] > 0 && yVal[val] < 0 && xVal[val] > -1 * yVal[val]) {
+                    //plus count of Coordinate[2]
+                    Coordinate[2]+=1;
+                }else if (xVal[val] > 0 && yVal[val] < 0 && xVal[val] < -1 * yVal[val]) {
+                    //plus count of Coordinate[3]
+                    Coordinate[3]+=1;
+                }else if (xVal[val] < 0 && yVal[val] > 0 && xVal[val] > -1 * yVal[val]) {
+                    //plus count of Coordinate[4]
+                    Coordinate[4]+=1;
+                }else if (xVal[val] < 0 && yVal[val] > 0 && xVal[val] < -1 * yVal[val]) {
+                    //plus count of Coordinate[5]
+                    Coordinate[5]+=1;
+                }else if (xVal[val] < 0 && yVal[val] < 0 && xVal[val] > yVal[val]) {
+                    //plus count of Coordinate[6]
+                    Coordinate[6]+=1;
+                }else if (xVal[val] < 0 && yVal[val] < 0 && xVal[val] < yVal[val]) {
+                    //plus count of Coordinate[7]
+                    Coordinate[7]+=1;
+                }
+            }
+            //console.log(Coordinate);
+            for (var number = 0; number < 8; number ++) {
+                if(Coordinate[number] >= min) {
+                    ok ++;//ある領域での散らばりの検知
+                }
+            }
+            if (ok >= 6) {//6つ以上の領域で散らばりがある
+                //&=は、左辺に左辺&右辺の結果を代入
+                //bitwise AND, &=はどちらもtrueならtrueという意味
+                result &= true;
+            }else {
+                //必ずfalse
+                result &= false;
+            }//detect circulationMorter
+            if (result && xVal.length != 1) {
+                //result = true
+                console.log("isCircle");//detect circle motion
+                circle_id.textContent = "円運動が検知されました！";//detected circle motion
+                return true;
+            }else{//result = false
+                console.log("NG");//do not detect circle motion
+                circle_id.textContent = "円運動は検知されていません！";//do not detect circle motion
+                return false;
+            }
+        }
+        graphViewer();//display graph
+    </script>
+
+</html>

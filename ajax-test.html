@@ -1,0 +1,22 @@
+<html>
+<body>
+<!--bodyの部分が表示される-->
+<h3>AJAX test</h3>
+<p id ="change">AJAXでこの部分を変更します</p>
+<!--<button type="button" onclick="loadDoc('">変更</button>-->
+<script>
+    function loadDoc(url, callBack) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+            if (this.readyState == 4 && this.status == 200) {
+                callBack(this);
+            }
+        };
+        xhttp.open("GET", url, true);
+        xhttp.send();
+    }
+    function load(xhttp) {
+        document.getElementById("change").innerHTML = xhttp.responseText;
+    }
+</script>
+</body></html>

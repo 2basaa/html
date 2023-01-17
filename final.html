@@ -227,9 +227,10 @@
                 //sleep(time)time is 1000 or 100 or 25
                 sleep(time).then(() => {
                     //get information of lis3dh from 20T2117B-13.cgi
-                    loadDoc("/cgi-bin/20T2117B-13.cgi?Reset=" + encodeURI(reset) +
+                    loadDoc("/cgi-bin/lis.cgi?Reset=" + encodeURI(reset) +
                         "&xvalue=" + encodeURI(xen) + "&yvalue=" + encodeURI(yen) + "&zvalue=" + encodeURI(zen) +
                         "&frequency=" + encodeURI(hz_value) + "&scale=" + encodeURI(scale_range), load);
+                    resetCricleData();//reset element of list
                     addData();//add data to list
                     isCircle();//detect motion of circle
                     graphViewer();//recursive graphViewer function
@@ -449,8 +450,7 @@
                 variance += Math.pow(getLength(count) - mean, 2);
             }//get average((axisLength - mean)^2)
             return variance / xVal.length;            
-        }
-        //detect circular motion
+        }//detect circular motion
         function isCircle() {
             //circle_id
             const circle_id = document.getElementById("circle");
@@ -489,7 +489,7 @@
                     Coordinate[7]+=1;
                 }
             }
-            //console.log(Coordinate);
+            console.log(Coordinate);
             for (var number = 0; number < 8; number ++) {
                 if(Coordinate[number] >= min) {
                     ok ++;//ある領域での散らばりの検知
@@ -503,7 +503,7 @@
                 //必ずfalse
                 result &= false;
             }//detect circulationMorter
-            if (result && xVal.length != 1) {
+            if (result && xVal.length != 0) {
                 //result = true
                 console.log("isCircle");//detect circle motion
                 circle_id.textContent = "円運動が検知されました！";//detected circle motion
@@ -512,6 +512,17 @@
                 console.log("NG");//do not detect circle motion
                 circle_id.textContent = "円運動は検知されていません！";//do not detect circle motion
                 return false;
+            }
+        }//Reset data after 20 measurements
+        //Circular motion detection is performed every 20 or less data
+        function resetCricleData() {
+            if (xVal.length > 20) {
+                //reset data of xaxis and yaxis
+                label_time = 0;
+                xVal.length= 0;
+                yVal.length = 0;
+                zVal.length = 0;
+                timeVal.length = 0;
             }
         }
         graphViewer();//display graph
